@@ -1,5 +1,8 @@
 from pydantic import BaseModel
 
 class ReportBase(BaseModel):
-    date: str
     product_id: int
+
+class Report(ReportBase):
+    pass
+    date: str

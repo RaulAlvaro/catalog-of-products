@@ -17,6 +17,10 @@ class ReportRepository:
             report.id,
         )
     
+    def get_reports_by_product_id(self, report: Report) -> List[Report]:
+        return self.db.query(Report).filter(Report.product_id == report.product_id).all()
+
+    
     def get_all_reports(
         self,
     ) -> List[Report]:

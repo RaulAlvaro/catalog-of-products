@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from fastapi import Depends
 from src.models.ReportModel import Report
@@ -17,6 +18,11 @@ class ReportService:
             Report(id=report_id)
         )
     
+    def get_reports_by_product_id(self, product_id: int) -> List[Report]:
+        return self.reportRepository.get_reports_by_product_id(
+            Report(product_id=product_id)
+        )
+    
     def get_all_reports(
         self
     ) -> List[Report]:
@@ -26,5 +32,7 @@ class ReportService:
         self,
         report: ReportBase
     ) -> Report:
-        return self.reportRepository.create_report(report)
+        now = datetime.now()
+        current_date = now.strftime("%d/%m/%Y %H:%M:%S")
+        return self.reportRepository.create_report({ "product_id": report.product_id, "date": current_date })
     
