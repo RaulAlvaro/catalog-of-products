@@ -13,4 +13,4 @@ class Product(Base):
     name = Column(String, index=True)
     price = Column(Integer, index=True)
     brand = Column(String, index=True)
-    reports = relationship("Report", back_populates="product")
+    # reports = relationship("Report", back_populates="product")

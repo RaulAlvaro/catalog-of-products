@@ -2,6 +2,8 @@ from fastapi import Depends, FastAPI
 
 # from configs.enviroment import get_environment_variables
 from src.routers.v1.UserRouter import UserRouter
+from src.routers.v1.ProductRouter import ProductRouter
+from src.routers.v1.ReportRouter import ReportRouter
 from src.models.BaseModel import init
 
 # Application Environment Configuration
@@ -10,6 +12,8 @@ from src.models.BaseModel import init
 app = FastAPI()
 
 app.include_router(UserRouter)
+app.include_router(ProductRouter)
+app.include_router(ReportRouter)
 
 # Initialise Data Model Attributes
 init()

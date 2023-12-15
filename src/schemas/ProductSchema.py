@@ -1,16 +1,16 @@
 from pydantic import BaseModel
 
 
-class ProductBase(BaseModel):
+class ProductBaseSchema(BaseModel):
     sku: str
     name: str
     price: float
     brand: str
 
-class ProductCreate(ProductBase):
+class ProductCreateSchema(ProductBaseSchema):
     pass
 
-class Product(ProductBase):
+class ProductSchema(ProductBaseSchema):
     id: int
 
     class Config:

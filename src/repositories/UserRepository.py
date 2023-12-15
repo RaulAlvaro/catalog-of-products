@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import Depends
-from sqlalchemy.orm import Session, lazyload
+from sqlalchemy.orm import Session
 
 from src.configs.database import get_db_connection
 from src.models.UserModel import User

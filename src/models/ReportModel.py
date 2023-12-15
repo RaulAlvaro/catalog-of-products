@@ -10,6 +10,7 @@ class Report(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
+    product_id = Column(Integer)
+    # product_id = Column(Integer, ForeignKey("products.id"))
 
-    product = relationship("Product", back_populates="reports")
+    # product = relationship("Product", back_populates="reports")
