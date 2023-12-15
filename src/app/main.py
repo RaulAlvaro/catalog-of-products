@@ -1,12 +1,47 @@
+from datetime import datetime, timedelta
+from typing import Union
+
+from jose import JWTError, jwt
+
+from passlib.context import CryptContext
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from typing_extensions import Annotated
+
 from typing import List
+
+from typing_extensions import Annotated
+
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
+import os
+from dotenv import load_dotenv
+
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
+# Import from auth
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+# Auth
+BASE_DIR= os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+# ----
+
 models.Base.metadata.create_all(bind=engine)
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+SECRET_KEY = os.environ['SECRET_KEY']
+ALGORITHM = os.environ['ALGORITHM']
+ACCESS_TOKEN_EXPIRE_MINUTES = os.environ['ACCESS_TOKEN_EXPIRE_MINUTES']
+ACCESS_TOKEN_EXPIRE_MINUTES = int(ACCESS_TOKEN_EXPIRE_MINUTES)
 
 app = FastAPI()
 
@@ -40,18 +75,120 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     return db_user
 
 
+# Auth
+
+# Login
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def get_user(users_list, username: str):
+    user = [user for user in users_list if user.username == username]
+    [user] = user
+    print("user", user)
+    if user:
+        return user
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    
+
+    users_in_db = crud.get_all_users(db)
+    users_list = [schemas.User(**user.__dict__) for user in users_in_db]
+    user = get_user(users_list, username=token_data.username)
+    print("user in get_current_user", user)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[models.User, Depends(get_current_user)],
+):
+    if not(current_user.is_active):
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+
+@app.post("/token", response_model=schemas.Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Session = Depends(get_db)
+):
+    users_in_db = crud.get_all_users(db)
+    users_list = [schemas.UserCreate(**user.__dict__) for user in users_in_db]
+    user = authenticate_user(users_list, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+@app.get("/users/me/", response_model=schemas.User)
+async def read_users_me(
+    current_user: Annotated[models.User, Depends(get_current_active_user)],
+):
+    return current_user
+
+
 #Products endpoints
 @app.post("/products/", response_model=schemas.Product)
-def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db), ):
     db_product = crud.get_product(db, product_sku=product.sku)
     if db_product:
         raise HTTPException(status_code=400, detail="Product already registered")
     return crud.create_product(db=db, product=product)
 
 @app.get("/products/", response_model=List[schemas.Product])
-def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    products = crud.get_products(db, skip=skip, limit=limit)
-    return products
+async def read_products(current_user: Annotated[models.User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
+    if current_user:
+        products = crud.get_all_products(db)
+        return products
 
 @app.get("/products/{product_sku}", response_model=schemas.Product)
 def read_product(product_sku: str, db: Session = Depends(get_db)):

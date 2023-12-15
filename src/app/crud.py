@@ -1,6 +1,8 @@
+
 from sqlalchemy.orm import Session
 
 from . import models, schemas
+
 
 #users
 def get_user(db: Session, user_id: int):
@@ -11,6 +13,9 @@ def get_user_by_email(db: Session, email: str):
 
 def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
+
+def get_all_users(db: Session):
+    return db.query(models.User).all()
 
 def create_user(db: Session, user: schemas.UserCreate):
     fake_hashed_password = user.password + "notreallyhashed"
@@ -28,9 +33,13 @@ def get_product(db: Session, product_sku: str):
 def get_products(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Product).offset(skip).limit(limit).all()
 
+def get_all_products(db: Session):
+    return db.query(models.Product).all()
+
 def create_product(db: Session, product: schemas.ProductCreate):
     db_product = models.Product(**product.dict())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     return db_product
+
