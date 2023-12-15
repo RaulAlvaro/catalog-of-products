@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from typing import List
 from fastapi import Depends
 from src.models.ProductModel import Product
@@ -21,7 +23,9 @@ class ProductService:
         self.reportRepository = reportRepository
 
     def get_product(self, product_id: int) -> Product:
-        self.create_report_of_product({"product_id": product_id, "date": "2021-09-03"})
+        now = datetime.now()
+        current_date = now.strftime("%d/%m/%Y %H:%M:%S")
+        self.create_report_of_product({"product_id": product_id, "date": current_date})
         return self.productRepository.get_product(
             Product(id=product_id)
         )
