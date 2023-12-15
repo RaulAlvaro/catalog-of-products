@@ -1,0 +1,32 @@
+version: "3.7"
+services:
+  db:
+    image: postgres:12
+    volumes:
+      - app-db-data:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    networks:
+      - zebrands-challenge-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8888:80"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    networks:
+      - zebrands-challenge-network
+
+volumes:
+  app-db-data:
+
+networks:
+  zebrands-challenge-network:
+    driver: bridge
