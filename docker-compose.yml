@@ -32,13 +32,17 @@ services:
       --host 0.0.0.0
       --port 8000
       --reload
-      "main:app"
+      "src.main:app"
     volumes:
-      - "./app:/app"
+      - "./src:/src"
     ports:
       - "8000:8000"
     depends_on:
       - db
+    env_file:
+      - .env
+    networks:
+      - zebrands-challenge-network
 
 volumes:
   app-db-data:
